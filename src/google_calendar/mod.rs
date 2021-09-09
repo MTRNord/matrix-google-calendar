@@ -4,7 +4,10 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use crate::errors::Error;
+use crate::{
+    errors::Error,
+    google_calendar::types::{Calendars, ClientSecrets},
+};
 use axum::{extract, handler::get, http::StatusCode, Router};
 use matrix_sdk::events::{room::message::MessageEventContent, AnyMessageEventContent};
 use oauth2::{
@@ -17,38 +20,7 @@ use reqwest::{header, ClientBuilder};
 use serde::Deserialize;
 use tracing::info;
 
-#[derive(Debug, Clone, Deserialize)]
-struct ClientSecrets {
-    web: ClientSecretsInner,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-struct ClientSecretsInner {
-    client_id: String,
-    project_id: String,
-    auth_uri: String,
-    token_uri: String,
-    auth_provider_x509_cert_url: String,
-    client_secret: String,
-    redirect_uris: Vec<String>,
-}
-
-impl ClientSecrets {
-    fn load_clientsecrets() -> Option<Self> {
-        let path: PathBuf = "clientsecret.json".into();
-        let file = std::fs::File::open(path);
-        match file {
-            Ok(file) => {
-                let clientsecrets: Result<Self, serde_json::Error> = serde_json::from_reader(&file);
-                match clientsecrets {
-                    Ok(clientsecrets) => Some(clientsecrets),
-                    Err(_) => None,
-                }
-            }
-            Err(_) => None,
-        }
-    }
-}
+pub mod types;
 
 trait LoadTokenResponse {
     fn get_from_file(mxid: String) -> Option<BasicTokenResponse>;
@@ -255,62 +227,4 @@ pub async fn list_calendars(mxid: String) -> Result<Calendars, crate::errors::Er
 
     info!("Got response");
     Ok(res)
-}
-
-#[derive(Deserialize, Debug, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct Calendars {
-    pub kind: String,
-    pub etag: String,
-    pub next_page_token: Option<String>,
-    pub next_sync_token: Option<String>,
-    pub items: Vec<CalendarListEntry>,
-}
-
-#[derive(Deserialize, Debug, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct CalendarListEntry {
-    pub kind: String,
-    pub etag: String,
-    pub id: String,
-    pub summary: String,
-    pub description: Option<String>,
-    pub location: Option<String>,
-    pub time_zone: Option<String>,
-    pub summary_override: Option<String>,
-    pub color_id: Option<String>,
-    pub background_color: Option<String>,
-    pub foreground_color: Option<String>,
-    pub hidden: Option<bool>,
-    pub selected: Option<bool>,
-    pub access_role: String,
-    pub primary: Option<bool>,
-    pub deleted: Option<bool>,
-    pub default_reminders: Vec<CalendarDefaultReminders>,
-    pub notification_settings: Option<CalendarNotificationSettings>,
-    pub conference_properties: Option<CalendarConferenceParties>,
-}
-
-#[derive(Deserialize, Debug, Clone)]
-pub struct CalendarDefaultReminders {
-    pub method: String,
-    pub minutes: i64,
-}
-
-#[derive(Deserialize, Debug, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct CalendarConferenceParties {
-    pub allowed_conference_solution_types: Vec<String>,
-}
-
-#[derive(Deserialize, Debug, Clone)]
-pub struct CalendarNotificationSettings {
-    pub notifications: Vec<CalendarNotifications>,
-}
-
-#[derive(Deserialize, Debug, Clone)]
-pub struct CalendarNotifications {
-    #[serde(rename = "type")]
-    pub notifications_type: String,
-    pub method: String,
 }
