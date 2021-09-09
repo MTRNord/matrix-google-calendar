@@ -1,0 +1,5 @@
+homeserver_url: ""
+mxid: ""
+password: ""
+store_path: ./store
+session_path: ./store/session
